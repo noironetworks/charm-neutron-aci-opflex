@@ -7,11 +7,11 @@ This charm is a subordinate to nova-compute charm and provides Opflex connectivi
 Usage
 -----
 
-juju deploy --repository=<path> local:xenial/neutron-aci-opflex --config=<config> neutron-aci-opflex
-juju add-relation neutron-aci-opflex:neutron-plugin-api neutron-api:neutron-plugin-api
-juju add-relation neutron-aci-opflex:neutron-plugin nova-compute:neutron-plugin
-juju add-relation neutron-aci-opflex:amqp rabbitmq-server:amqp
-juju add-relation neutron-aci-opflex:quantum-network-service neutron-gateway:quantum-network-service
+      juju deploy --repository=<path> local:xenial/neutron-aci-opflex --config=<config> neutron-aci-opflex
+      juju add-relation neutron-aci-opflex:neutron-plugin-api neutron-api:neutron-plugin-api
+      juju add-relation neutron-aci-opflex:neutron-plugin nova-compute:neutron-plugin
+      juju add-relation neutron-aci-opflex:amqp rabbitmq-server:amqp
+      juju add-relation neutron-aci-opflex:quantum-network-service neutron-gateway:quantum-network-service
 
 
 Configuration
@@ -32,56 +32,47 @@ aci-encap
 
      (string)
 
-     Options are 'vlan' or 'vxlan'. When 'use-opflex' is set to False, this value is ignored and encap is forced to vlan.
+     Options are 'vlan' or 'vxlan'. 
 
      (vlan)
 
-apic-hosts
+aci-apic-system-id:
 
      (string)
 
-     Comma separated list of ACI controller host names or ip addresses
+     A id string for this openstack instance
 
-apic-username
+     (openstack)
 
-     (string)
+aci-infra-vlan
 
-     username for ACI controller
+     (int)
+
+     ACI Fabric Infra vlan. (This cannot be changed once the charm is deployed)
  
-     admin
+     4093
 
-apic-password
-
-     (string)
-
-     password for ACI user
-
-use-vmm
+aci-opflex-peer-ip
 
      (string)
 
-     If true, api creates a openstack vmm domain, if false it uses domain specified by apic-domain-name
+     Opflex Peer ip on ACI. Consult ACI fabric installation
 
-     True
+     10.0.0.30
 
-apic-domain-name
-
-     (string)
-
-     Name of aci domain for this openstack instance
-
-apic-connection-json
+aci-opflex-remote-ip
 
      (string)
 
-     Describes nova-compute connections to ACI leaf in JSON format. Example {'101': ['host1.domain:1/1', 'host2.domain:1/2'], '102':['host3.domain:1/4']}. 101 is the switch id, host1.domain is connected to port 1/1 
+     Opflex peer remote ip on ACI. Consult ACI fabric installation
 
-apic-vpc-pairs
+     10.0.0.32
+
+aci-uplink-interface
 
      (string)
-     
-     If using VPC to connect the nodes to ACI leaf switches, specify the switch id pairs for vpc. Example, if switch ids 101 and 102 form a vpc pair and switch ids 103, 104 form a vpc pair, then set the value to '101:102,103:104'
 
+     Uplink interface from server to ACI fabric. eg eth2 or bond0
 
 
 Author: Ratnakar Kolli (rkolli@noironetworks.com)

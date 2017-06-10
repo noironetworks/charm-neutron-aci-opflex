@@ -27,6 +27,7 @@ from charmhelpers.core.hookenv import (
     status_set,
     is_relation_made,
     is_leader,
+    INFO,
 )
 
 from charmhelpers.contrib.network.ovs import (
@@ -97,6 +98,11 @@ BASE_RESOURCE_MAP = OrderedDict([
 REQUIRED_INTERFACES = {
    'messaging': ['amqp'],
 }
+
+UNSUPPORTED_CONFIG_CHANGES = [
+        'aci-infra-vlan',
+        'aci-uplink-interface'
+]
 
 INT_BRIDGE = "br-int"
 EXT_BRIDGE = "br-ex"
@@ -214,6 +220,11 @@ def configure_ovs():
     add_bridge_port(INT_BRIDGE, config('aci-uplink-interface'), promisc=True)
 
 def configure_opflex():
+    conf = config()
+    for key in UNSUPPORTED_CONFIG_CHANGES:
+        if conf.changed(key):
+            log("Config change for %s not supported" % key, INFO)
+            return
     configure_ovs()
     create_opflex_interface()
 

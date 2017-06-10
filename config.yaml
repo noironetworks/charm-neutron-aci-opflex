@@ -7,10 +7,6 @@ options:
     type: string
     default:
     description: "Repo key, if missing no package authentication will be performed"
-  aci-apic-system-id:
-    type: string
-    default: 'openstack'
-    description: "As id string for this openstack instance"
   aci-opflex-debug-level:
     type: string
     default: 'debug'
@@ -18,7 +14,7 @@ options:
   aci-apic-system-id:
     type: string
     default:
-    description: "Apic system id"
+    description: "id string for this openstack instance"
   aci-encap:
     type: string
     default: vxlan
