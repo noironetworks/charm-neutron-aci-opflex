@@ -1,0 +1,32 @@
+name: neutron-aci-opflex
+subordinate: true
+summary: Aci opflex
+maintainer: Noiro networks
+description: |
+  This charm provides the OpenStack Neutron Open vSwitch agent, managing
+  L2 connectivity on nova-compute services.
+tags:
+  - openstack
+series:
+  - xenial
+  - trusty
+  - precise
+  - yakkety
+extra-bindings:
+  data:
+provides:
+  neutron-plugin:
+    interface: neutron-plugin
+    scope: container
+  neutron-control:
+    interface: service-control
+requires:
+  amqp:
+    interface: rabbitmq  
+  neutron-plugin-api:
+    interface: neutron-plugin-api
+  zeromq-configuration:
+    interface: zeromq-configuration
+    scope: container
+  quantum-network-service:
+    interface: quantum
