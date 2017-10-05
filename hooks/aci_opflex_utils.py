@@ -6,12 +6,10 @@ import socket
 import subprocess
 import sys
 from itertools import chain
-import pdb
 
 ACI_OPFLEX_PACKAGES = [
    'openvswitch-switch', 
    'agent-ovs', 
-   'neutron-ml2-driver-apic',
    'neutron-opflex-agent',
    'neutron-metadata-agent',
 ]
