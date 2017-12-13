@@ -6,6 +6,9 @@ import subprocess
 import sys
 import pdb
 
+from charmhelpers import fetch
+fetch.apt_install(['python-apt'])
+
 from aci_opflex_utils import (
     ACI_OPFLEX_PACKAGES,
     aci_opflex_install_pkgs,
@@ -41,7 +44,6 @@ from charmhelpers.contrib.openstack.utils import (
     os_release,
 )
 
-from charmhelpers import fetch
 
 hooks = Hooks()
 CONFIGS = register_configs()
