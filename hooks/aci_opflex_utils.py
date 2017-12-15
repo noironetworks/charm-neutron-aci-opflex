@@ -104,7 +104,7 @@ UNSUPPORTED_CONFIG_CHANGES = [
         'aci-uplink-interface'
 ]
 
-INT_BRIDGE = "br-int"
+INT_BRIDGE = "br-fabric"
 EXT_BRIDGE = "br-ex"
 DATA_BRIDGE = 'br-data'
 
