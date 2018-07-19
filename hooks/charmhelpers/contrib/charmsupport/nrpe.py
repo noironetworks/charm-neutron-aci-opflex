@@ -30,6 +30,7 @@ import yaml
 
 from charmhelpers.core.hookenv import (
     config,
+    hook_name,
     local_unit,
     log,
     relation_ids,
@@ -38,6 +39,7 @@ from charmhelpers.core.hookenv import (
 )
 
 from charmhelpers.core.host import service
+from charmhelpers.core import host
 
 # This module adds compatibility with the nrpe-external-master and plain nrpe
 # subordinate charms. To use it in your charm:
@@ -108,6 +110,13 @@ from charmhelpers.core.host import service
 #    def local_monitors_relation_changed():
 #        update_nrpe_config()
 #
+# 4.a If your charm is a subordinate charm set primary=False
+#
+#    from charmsupport.nrpe import NRPE
+#    (...)
+#    def update_nrpe_config():
+#        nrpe_compat = NRPE(primary=False)
+#
 # 5. ln -s hooks.py nrpe-external-master-relation-changed
 #    ln -s hooks.py local-monitors-relation-changed
 
@@ -117,7 +126,7 @@ class CheckException(Exception):
 
 
 class Check(object):
-    shortname_re = '[A-Za-z0-9-_]+$'
+    shortname_re = '[A-Za-z0-9-_.]+$'
     service_template = ("""
 #---------------------------------------------------
 # This file is Juju managed
@@ -185,6 +194,13 @@ define service {{
         nrpe_check_file = self._get_check_filename()
         with open(nrpe_check_file, 'w') as nrpe_check_config:
             nrpe_check_config.write("# check {}\n".format(self.shortname))
+            if nagios_servicegroups:
+                nrpe_check_config.write(
+                    "# The following header was added automatically by juju\n")
+                nrpe_check_config.write(
+                    "# Modifying it will affect nagios monitoring and alerting\n")
+                nrpe_check_config.write(
+                    "# servicegroups: {}\n".format(nagios_servicegroups))
             nrpe_check_config.write("command[{}]={}\n".format(
                 self.command, self.check_cmd))
 
@@ -219,10 +235,12 @@ class NRPE(object):
     nagios_logdir = '/var/log/nagios'
     nagios_exportdir = '/var/lib/nagios/export'
     nrpe_confdir = '/etc/nagios/nrpe.d'
+    homedir = '/var/lib/nagios'  # home dir provided by nagios-nrpe-server
 
-    def __init__(self, hostname=None):
+    def __init__(self, hostname=None, primary=True):
         super(NRPE, self).__init__()
         self.config = config()
+        self.primary = primary
         self.nagios_context = self.config['nagios_context']
         if 'nagios_servicegroups' in self.config and self.config['nagios_servicegroups']:
             self.nagios_servicegroups = self.config['nagios_servicegroups']
@@ -238,6 +256,12 @@ class NRPE(object):
             else:
                 self.hostname = "{}-{}".format(self.nagios_context, self.unit_name)
         self.checks = []
+        # Iff in an nrpe-external-master relation hook, set primary status
+        relation = relation_ids('nrpe-external-master')
+        if relation:
+            log("Setting charm primary status {}".format(primary))
+            for rid in relation_ids('nrpe-external-master'):
+                relation_set(relation_id=rid, relation_settings={'primary': self.primary})
 
     def add_check(self, *args, **kwargs):
         self.checks.append(Check(*args, **kwargs))
@@ -262,7 +286,7 @@ class NRPE(object):
         try:
             nagios_uid = pwd.getpwnam('nagios').pw_uid
             nagios_gid = grp.getgrnam('nagios').gr_gid
-        except:
+        except Exception:
             log("Nagios user not set up, nrpe checks not updated")
             return
 
@@ -279,7 +303,12 @@ class NRPE(object):
                 "command": nrpecheck.command,
             }
 
-        service('restart', 'nagios-nrpe-server')
+        # update-status hooks are configured to firing every 5 minutes by
+        # default. When nagios-nrpe-server is restarted, the nagios server
+        # reports checks failing causing unneccessary alerts. Let's not restart
+        # on update-status hooks.
+        if not hook_name() == 'update-status':
+            service('restart', 'nagios-nrpe-server')
 
         monitor_ids = relation_ids("local-monitors") + \
             relation_ids("nrpe-external-master")
@@ -323,42 +352,62 @@ def get_nagios_unit_name(relation_name='nrpe-external-master'):
     return unit
 
 
-def add_init_service_checks(nrpe, services, unit_name):
+def add_init_service_checks(nrpe, services, unit_name, immediate_check=True):
     """
     Add checks for each service in list
 
     :param NRPE nrpe: NRPE object to add check to
     :param list services: List of services to check
     :param str unit_name: Unit name to use in check description
+    :param bool immediate_check: For sysv init, run the service check immediately
     """
     for svc in services:
+        # Don't add a check for these services from neutron-gateway
+        if svc in ['ext-port', 'os-charm-phy-nic-mtu']:
+            next
+
         upstart_init = '/etc/init/%s.conf' % svc
         sysv_init = '/etc/init.d/%s' % svc
-        if os.path.exists(upstart_init):
-            # Don't add a check for these services from neutron-gateway
-            if svc not in ['ext-port', 'os-charm-phy-nic-mtu']:
-                nrpe.add_check(
-                    shortname=svc,
-                    description='process check {%s}' % unit_name,
-                    check_cmd='check_upstart_job %s' % svc
-                )
+
+        if host.init_is_systemd():
+            nrpe.add_check(
+                shortname=svc,
+                description='process check {%s}' % unit_name,
+                check_cmd='check_systemd.py %s' % svc
+            )
+        elif os.path.exists(upstart_init):
+            nrpe.add_check(
+                shortname=svc,
+                description='process check {%s}' % unit_name,
+                check_cmd='check_upstart_job %s' % svc
+            )
         elif os.path.exists(sysv_init):
             cronpath = '/etc/cron.d/nagios-service-check-%s' % svc
-            cron_file = ('*/5 * * * * root '
-                         '/usr/local/lib/nagios/plugins/check_exit_status.pl '
-                         '-s /etc/init.d/%s status > '
-                         '/var/lib/nagios/service-check-%s.txt\n' % (svc,
-                                                                     svc)
-                         )
+            checkpath = '%s/service-check-%s.txt' % (nrpe.homedir, svc)
+            croncmd = (
+                '/usr/local/lib/nagios/plugins/check_exit_status.pl '
+                '-e -s /etc/init.d/%s status' % svc
+            )
+            cron_file = '*/5 * * * * root %s > %s\n' % (croncmd, checkpath)
             f = open(cronpath, 'w')
             f.write(cron_file)
             f.close()
             nrpe.add_check(
                 shortname=svc,
-                description='process check {%s}' % unit_name,
-                check_cmd='check_status_file.py -f '
-                          '/var/lib/nagios/service-check-%s.txt' % svc,
+                description='service check {%s}' % unit_name,
+                check_cmd='check_status_file.py -f %s' % checkpath,
             )
+            # if /var/lib/nagios doesn't exist open(checkpath, 'w') will fail
+            # (LP: #1670223).
+            if immediate_check and os.path.isdir(nrpe.homedir):
+                f = open(checkpath, 'w')
+                subprocess.call(
+                    croncmd.split(),
+                    stdout=f,
+                    stderr=subprocess.STDOUT
+                )
+                f.close()
+                os.chmod(checkpath, 0o644)
 
 
 def copy_nrpe_checks():

@@ -30,6 +30,7 @@ from charmhelpers.contrib.hahelpers.cluster import is_clustered
 PUBLIC = 'public'
 INTERNAL = 'int'
 ADMIN = 'admin'
+ACCESS = 'access'
 
 ADDRESS_MAP = {
     PUBLIC: {
@@ -49,7 +50,13 @@ ADDRESS_MAP = {
         'config': 'os-admin-network',
         'fallback': 'private-address',
         'override': 'os-admin-hostname',
-    }
+    },
+    ACCESS: {
+        'binding': 'access',
+        'config': 'access-network',
+        'fallback': 'private-address',
+        'override': 'os-access-hostname',
+    },
 }
 
 
@@ -177,3 +184,13 @@ def resolve_address(endpoint_type=PUBLIC, override=True):
                          "clustered=%s)" % (net_type, clustered))
 
     return resolved_address
+
+
+def get_vip_in_network(network):
+    matching_vip = None
+    vips = config('vip')
+    if vips:
+        for vip in vips.split():
+            if is_address_in_network(network, vip):
+                matching_vip = vip
+    return matching_vip

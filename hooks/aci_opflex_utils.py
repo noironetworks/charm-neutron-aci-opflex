@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from collections import OrderedDict
 from copy import deepcopy
@@ -110,7 +110,7 @@ def register_configs(release=None):
     release = release or os_release('neutron-common')
     configs = templating.OSConfigRenderer(templates_dir=TEMPLATES,
                                           openstack_release=release)
-    for cfg, rscs in resource_map().iteritems():
+    for cfg, rscs in resource_map().items():
         configs.register(cfg, rscs['contexts'])
     return configs
 
@@ -128,7 +128,7 @@ def restart_map():
     Constructs a restart map based on charm config settings and relation
     state.
     '''
-    return {k: v['services'] for k, v in resource_map().iteritems()}
+    return {k: v['services'] for k, v in resource_map().items()}
 
 def services():
     """Returns a list of (unique) services associate with this charm

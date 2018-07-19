@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 import pdb
 from charmhelpers.core.hookenv import config
 from charmhelpers.contrib.openstack import context, templating
