@@ -65,7 +65,7 @@ from charmhelpers.core.host import (
 from charmhelpers import fetch
 
 OPFLEX_CONFIG = "/etc/opflex-agent-ovs/conf.d/opflex-agent-ovs.conf"
-OPFLEX_SERVICES = ['agent-ovs', 'neutron-opflex-agent']
+OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent']
 NEUTRON_CONF_DIR = "/etc/neutron"
 NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 OVS_CONF = '%s/plugins/ml2/openvswitch_agent.ini' % NEUTRON_CONF_DIR
