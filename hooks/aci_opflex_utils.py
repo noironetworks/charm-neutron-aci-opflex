@@ -12,6 +12,7 @@ ACI_OPFLEX_PACKAGES = [
    'agent-ovs', 
    'neutron-opflex-agent',
    'neutron-metadata-agent',
+   'conntrack',
 ]
 
 from charmhelpers.core.hookenv import (
