@@ -146,14 +146,14 @@ def aci_opflex_install_pkgs():
 
     conf = config()
 
-    if 'aci-repo-key' in conf.keys():
-        fetch.add_source(conf['aci-repo'], key=conf['aci-repo-key'])
+    if config('aci-repo-key'):
+        fetch.add_source(config('aci-repo'), key=config('aci-repo-key'))
     else:
-        fetch.add_source(conf['aci-repo'])
+        fetch.add_source(config('aci-repo'))
         opt.append('--allow-unauthenticated')
 
     fetch.apt_update(fatal=True)
-    fetch.apt_upgrade(fatal=True)
+    fetch.apt_upgrade(fatal=True, options=opt)
 
     fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
     fetch.apt_install(ACI_OPFLEX_PACKAGES, options=opt, fatal=True)
@@ -199,15 +199,10 @@ interface "%s.%s" {
     subprocess.check_call(cmd)
 
     if conf['aci-encap'] == 'vxlan':
-        cmd = ['/usr/bin/ovs-vsctl', 'list-ports', 'br-fabric']
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        brlist = p.stdout.read().decode().split('\n')
-
-        if not 'br-fab_vxlan0' in brlist:
-            cmd = ['/usr/bin/ovs-vsctl', 'add-port', 'br-fabric', 'br-fab_vxlan0', '--',
-                   'set', 'Interface', 'br-fab_vxlan0', 'type=vxlan',
-                   'options:remote_ip=flow', 'options:key=flow', 'options:dst_port=8472']
-            subprocess.check_call(cmd)
+        cmd = ['/usr/bin/ovs-vsctl', '--may-exist', 'add-port', 'br-fabric', 'br-fab_vxlan0', '--',
+               'set', 'Interface', 'br-fab_vxlan0', 'type=vxlan',
+               'options:remote_ip=flow', 'options:key=flow', 'options:dst_port=8472']
+        subprocess.check_call(cmd)
 
 def configure_ovs():
     status_set('maintenance', 'Configuring ovs')
