@@ -37,7 +37,10 @@ from charmhelpers.contrib.network.ovs import (
 
 from charmhelpers.core.host import (
     restart_on_change,
-    service_restart
+    service_restart,
+    service_running,
+    service_start,
+    service_stop
 )
 
 from charmhelpers.contrib.openstack import context, templating
@@ -66,7 +69,7 @@ from charmhelpers.core.host import (
 from charmhelpers import fetch
 
 OPFLEX_CONFIG = "/etc/opflex-agent-ovs/conf.d/opflex-agent-ovs.conf"
-OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent']
+OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent', 'neutron-cisco-apic-host-agent']
 NEUTRON_CONF_DIR = "/etc/neutron"
 NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 OVS_CONF = '%s/plugins/ml2/openvswitch_agent.ini' % NEUTRON_CONF_DIR
@@ -103,7 +106,8 @@ UNSUPPORTED_CONFIG_CHANGES = [
         'aci-uplink-interface'
 ]
 
-INT_BRIDGE = "br-fabric"
+INT_BRIDGE = "br-int"
+FAB_BRIDGE = "br-fabric"
 EXT_BRIDGE = "br-ex"
 DATA_BRIDGE = 'br-data'
 
@@ -142,30 +146,31 @@ def services():
 CONFIGS = register_configs()
 
 def aci_opflex_install_pkgs():
-    opt = ['--option=Dpkg::Options::=--force-confdef' ,'--option=Dpkg::Options::=--force-confold']
-
     conf = config()
 
-    if config('aci-repo-key'):
-        fetch.add_source(config('aci-repo'), key=config('aci-repo-key'))
-    else:
-        fetch.add_source(config('aci-repo'))
-        opt.append('--allow-unauthenticated')
+    fetch.add_source(config('aci-repo'), key=config('aci-repo-key'))
 
     fetch.apt_update(fatal=True)
-    fetch.apt_upgrade(fatal=True, options=opt)
+    fetch.apt_upgrade(fatal=True)
 
-    fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
-    fetch.apt_install(ACI_OPFLEX_PACKAGES, options=opt, fatal=True)
+    fetch.apt_install(['neutron-common', 'neutron-server'], fatal=True)
+    fetch.apt_install(ACI_OPFLEX_PACKAGES, fatal=True)
+    if config('aci-use-lldp-discovery'):
+       fetch.apt_install('lldpd', fatal=True)
+       if not service_running('lldpd'):
+          service_start('lldpd')
+    else:
+       if service_running('lldpd'):
+          service_stop('lldpd')
 
-    cmd = ['/bin/systemctl', 'stop', 'neutron-metadata-agent']
-    subprocess.check_call(cmd)
+    if service_running('neutron-metadata-agent'):
+       service_stop('neutron-metadata-agent')
 
-    cmd = ['/bin/systemctl', 'disable', 'neutron-metadata-agent']
-    subprocess.check_call(cmd)
+    #cmd = ['/bin/systemctl', 'disable', 'neutron-metadata-agent']
+    #subprocess.check_call(cmd)
 
-    cmd = ['touch', '/etc/neutron/plugin.ini']
-    subprocess.check_call(cmd)
+    #cmd = ['touch', '/etc/neutron/plugin.ini']
+    #subprocess.check_call(cmd)
 
 def create_opflex_interface():
     conf = config()
@@ -210,8 +215,8 @@ def configure_ovs():
         full_restart()
     datapath_type = 'system'
     add_bridge(INT_BRIDGE, datapath_type)
-    #add_bridge(EXT_BRIDGE, datapath_type)
-    add_bridge_port(INT_BRIDGE, config('aci-uplink-interface'), promisc=True)
+    add_bridge(FAB_BRIDGE, datapath_type)
+    add_bridge_port(FAB_BRIDGE, config('aci-uplink-interface'), promisc=True)
 
 def configure_opflex():
     conf = config()

@@ -15,6 +15,9 @@ series:
 extra-bindings:
   data:
 provides:
+  aci-opflex:
+    interface: aci-opflex
+    scope: container
   neutron-plugin:
     interface: neutron-plugin
     scope: container
@@ -22,7 +25,7 @@ provides:
     interface: service-control
 requires:
   amqp:
-    interface: rabbitmq  
+    interface: rabbitmq
   neutron-plugin-api:
     interface: neutron-plugin-api
   zeromq-configuration:

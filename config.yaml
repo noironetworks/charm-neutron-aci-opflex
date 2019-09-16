@@ -6,7 +6,7 @@ options:
   aci-repo-key:
     type: string
     default:
-    description: "Repo key, if missing no package authentication will be performed"
+    description: "Repo key"
   aci-opflex-debug-level:
     type: string
     default: 'debug'
@@ -35,6 +35,10 @@ options:
     type: string
     default:
     description: ""
+  aci-use-lldp-discovery:
+    type: boolean
+    default: True
+    description: "Use lldp to discover the connections to leaf switches"
   rabbit-user:
     default: neutron
     type: string
