@@ -73,6 +73,8 @@ from charmhelpers.core.host import (
     service_running,
     service_pause,
     service_resume,
+    service_stop,
+    service_start,
     restart_on_change_helper,
 )
 from charmhelpers.fetch import (
@@ -81,7 +83,8 @@ from charmhelpers.fetch import (
     add_source as fetch_add_source,
     SourceConfigError,
     GPGKeyError,
-    get_upstream_version
+    get_upstream_version,
+    filter_missing_packages
 )
 
 from charmhelpers.fetch.snap import (
@@ -116,6 +119,8 @@ OPENSTACK_RELEASES = (
     'pike',
     'queens',
     'rocky',
+    'stein',
+    'train',
 )
 
 UBUNTU_OPENSTACK_RELEASE = OrderedDict([
@@ -133,6 +138,9 @@ UBUNTU_OPENSTACK_RELEASE = OrderedDict([
     ('zesty', 'ocata'),
     ('artful', 'pike'),
     ('bionic', 'queens'),
+    ('cosmic', 'rocky'),
+    ('disco', 'stein'),
+    ('eoan', 'train'),
 ])
 
 
@@ -151,6 +159,9 @@ OPENSTACK_CODENAMES = OrderedDict([
     ('2017.1', 'ocata'),
     ('2017.2', 'pike'),
     ('2018.1', 'queens'),
+    ('2018.2', 'rocky'),
+    ('2019.1', 'stein'),
+    ('2019.2', 'train'),
 ])
 
 # The ugly duckling - must list releases oldest to newest
@@ -183,6 +194,12 @@ SWIFT_CODENAMES = OrderedDict([
         ['2.13.0', '2.15.0']),
     ('queens',
         ['2.16.0', '2.17.0']),
+    ('rocky',
+        ['2.18.0', '2.19.0']),
+    ('stein',
+        ['2.20.0', '2.21.0']),
+    ('train',
+        ['2.22.0']),
 ])
 
 # >= Liberty version->codename mapping
@@ -195,6 +212,8 @@ PACKAGE_CODENAMES = {
         ('16', 'pike'),
         ('17', 'queens'),
         ('18', 'rocky'),
+        ('19', 'stein'),
+        ('20', 'train'),
     ]),
     'neutron-common': OrderedDict([
         ('7', 'liberty'),
@@ -204,6 +223,8 @@ PACKAGE_CODENAMES = {
         ('11', 'pike'),
         ('12', 'queens'),
         ('13', 'rocky'),
+        ('14', 'stein'),
+        ('15', 'train'),
     ]),
     'cinder-common': OrderedDict([
         ('7', 'liberty'),
@@ -213,6 +234,8 @@ PACKAGE_CODENAMES = {
         ('11', 'pike'),
         ('12', 'queens'),
         ('13', 'rocky'),
+        ('14', 'stein'),
+        ('15', 'train'),
     ]),
     'keystone': OrderedDict([
         ('8', 'liberty'),
@@ -222,6 +245,8 @@ PACKAGE_CODENAMES = {
         ('12', 'pike'),
         ('13', 'queens'),
         ('14', 'rocky'),
+        ('15', 'stein'),
+        ('16', 'train'),
     ]),
     'horizon-common': OrderedDict([
         ('8', 'liberty'),
@@ -231,6 +256,8 @@ PACKAGE_CODENAMES = {
         ('12', 'pike'),
         ('13', 'queens'),
         ('14', 'rocky'),
+        ('15', 'stein'),
+        ('16', 'train'),
     ]),
     'ceilometer-common': OrderedDict([
         ('5', 'liberty'),
@@ -240,6 +267,8 @@ PACKAGE_CODENAMES = {
         ('9', 'pike'),
         ('10', 'queens'),
         ('11', 'rocky'),
+        ('12', 'stein'),
+        ('13', 'train'),
     ]),
     'heat-common': OrderedDict([
         ('5', 'liberty'),
@@ -249,6 +278,8 @@ PACKAGE_CODENAMES = {
         ('9', 'pike'),
         ('10', 'queens'),
         ('11', 'rocky'),
+        ('12', 'stein'),
+        ('13', 'train'),
     ]),
     'glance-common': OrderedDict([
         ('11', 'liberty'),
@@ -258,6 +289,8 @@ PACKAGE_CODENAMES = {
         ('15', 'pike'),
         ('16', 'queens'),
         ('17', 'rocky'),
+        ('18', 'stein'),
+        ('19', 'train'),
     ]),
     'openstack-dashboard': OrderedDict([
         ('8', 'liberty'),
@@ -267,6 +300,8 @@ PACKAGE_CODENAMES = {
         ('12', 'pike'),
         ('13', 'queens'),
         ('14', 'rocky'),
+        ('15', 'stein'),
+        ('16', 'train'),
     ]),
 }
 
@@ -289,13 +324,22 @@ def error_out(msg):
     sys.exit(1)
 
 
+def get_installed_semantic_versioned_packages():
+    '''Get a list of installed packages which have OpenStack semantic versioning
+
+    :returns List of installed packages
+    :rtype: [pkg1, pkg2, ...]
+    '''
+    return filter_missing_packages(PACKAGE_CODENAMES.keys())
+
+
 def get_os_codename_install_source(src):
     '''Derive OpenStack release codename from a given installation source.'''
     ubuntu_rel = lsb_release()['DISTRIB_CODENAME']
     rel = ''
     if src is None:
         return rel
-    if src in ['distro', 'distro-proposed']:
+    if src in ['distro', 'distro-proposed', 'proposed']:
         try:
             rel = UBUNTU_OPENSTACK_RELEASE[ubuntu_rel]
         except KeyError:
@@ -371,7 +415,7 @@ def get_swift_codename(version):
         return codenames[0]
 
     # NOTE: fallback - attempt to match with just major.minor version
-    match = re.match('^(\d+)\.(\d+)', version)
+    match = re.match(r'^(\d+)\.(\d+)', version)
     if match:
         major_minor_version = match.group(0)
         for codename, versions in six.iteritems(SWIFT_CODENAMES):
@@ -391,7 +435,7 @@ def get_os_codename_package(package, fatal=True):
             out = subprocess.check_output(cmd)
             if six.PY3:
                 out = out.decode('UTF-8')
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             return None
         lines = out.split('\n')
         for line in lines:
@@ -423,11 +467,11 @@ def get_os_codename_package(package, fatal=True):
     vers = apt.upstream_version(pkg.current_ver.ver_str)
     if 'swift' in pkg.name:
         # Fully x.y.z match for swift versions
-        match = re.match('^(\d+)\.(\d+)\.(\d+)', vers)
+        match = re.match(r'^(\d+)\.(\d+)\.(\d+)', vers)
     else:
         # x.y match only for 20XX.X
         # and ignore patch level for other packages
-        match = re.match('^(\d+)\.(\d+)', vers)
+        match = re.match(r'^(\d+)\.(\d+)', vers)
 
     if match:
         vers = match.group(0)
@@ -626,7 +670,7 @@ def openstack_upgrade_available(package):
     else:
         avail_vers = get_os_version_install_source(src)
     apt.init()
-    return apt.version_compare(avail_vers, cur_vers) == 1
+    return apt.version_compare(avail_vers, cur_vers) >= 1
 
 
 def ensure_block_device(block_device):
@@ -827,12 +871,25 @@ def _ows_check_if_paused(services=None, ports=None):
     """Check if the unit is supposed to be paused, and if so check that the
     services/ports (if passed) are actually stopped/not being listened to.
 
-    if the unit isn't supposed to be paused, just return None, None
+    If the unit isn't supposed to be paused, just return None, None
+
+    If the unit is performing a series upgrade, return a message indicating
+    this.
 
     @param services: OPTIONAL services spec or list of service names.
     @param ports: OPTIONAL list of port numbers.
     @returns state, message or None, None
     """
+    if is_unit_upgrading_set():
+        state, message = check_actually_paused(services=services,
+                                               ports=ports)
+        if state is None:
+            # we're paused okay, so set maintenance and return
+            state = "blocked"
+            message = ("Ready for do-release-upgrade and reboot. "
+                       "Set complete when finished.")
+        return state, message
+
     if is_unit_paused_set():
         state, message = check_actually_paused(services=services,
                                                ports=ports)
@@ -939,7 +996,9 @@ def _ows_check_charm_func(state, message, charm_func_with_configs):
     """
     if charm_func_with_configs:
         charm_state, charm_message = charm_func_with_configs()
-        if charm_state != 'active' and charm_state != 'unknown':
+        if (charm_state != 'active' and
+                charm_state != 'unknown' and
+                charm_state is not None):
             state = workload_state_compare(state, charm_state)
             if message:
                 charm_message = charm_message.replace("Incomplete relations: ",
@@ -1208,7 +1267,7 @@ def remote_restart(rel_name, remote_service=None):
 
 
 def check_actually_paused(services=None, ports=None):
-    """Check that services listed in the services object and and ports
+    """Check that services listed in the services object and ports
     are actually closed (not listened to), to verify that the unit is
     properly paused.
 
@@ -1286,6 +1345,65 @@ def is_unit_paused_set():
         return False
 
 
+def manage_payload_services(action, services=None, charm_func=None):
+    """Run an action against all services.
+
+    An optional charm_func() can be called. It should raise an Exception to
+    indicate that the function failed. If it was succesfull it should return
+    None or an optional message.
+
+    The signature for charm_func is:
+    charm_func() -> message: str
+
+    charm_func() is executed after any services are stopped, if supplied.
+
+    The services object can either be:
+      - None : no services were passed (an empty dict is returned)
+      - a list of strings
+      - A dictionary (optionally OrderedDict) {service_name: {'service': ..}}
+      - An array of [{'service': service_name, ...}, ...]
+
+    :param action: Action to run: pause, resume, start or stop.
+    :type action: str
+    :param services: See above
+    :type services: See above
+    :param charm_func: function to run for custom charm pausing.
+    :type charm_func: f()
+    :returns: Status boolean and list of messages
+    :rtype: (bool, [])
+    :raises: RuntimeError
+    """
+    actions = {
+        'pause': service_pause,
+        'resume': service_resume,
+        'start': service_start,
+        'stop': service_stop}
+    action = action.lower()
+    if action not in actions.keys():
+        raise RuntimeError(
+            "action: {} must be one of: {}".format(action,
+                                                   ', '.join(actions.keys())))
+    services = _extract_services_list_helper(services)
+    messages = []
+    success = True
+    if services:
+        for service in services.keys():
+            rc = actions[action](service)
+            if not rc:
+                success = False
+                messages.append("{} didn't {} cleanly.".format(service,
+                                                               action))
+    if charm_func:
+        try:
+            message = charm_func()
+            if message:
+                messages.append(message)
+        except Exception as e:
+            success = False
+            messages.append(str(e))
+    return success, messages
+
+
 def pause_unit(assess_status_func, services=None, ports=None,
                charm_func=None):
     """Pause a unit by stopping the services and setting 'unit-paused'
@@ -1316,26 +1434,16 @@ def pause_unit(assess_status_func, services=None, ports=None,
     @returns None
     @raises Exception(message) on an error for action_fail().
     """
-    services = _extract_services_list_helper(services)
-    messages = []
-    if services:
-        for service in services.keys():
-            stopped = service_pause(service)
-            if not stopped:
-                messages.append("{} didn't stop cleanly.".format(service))
-    if charm_func:
-        try:
-            message = charm_func()
-            if message:
-                messages.append(message)
-        except Exception as e:
-            message.append(str(e))
+    _, messages = manage_payload_services(
+        'pause',
+        services=services,
+        charm_func=charm_func)
     set_unit_paused()
     if assess_status_func:
         message = assess_status_func()
         if message:
             messages.append(message)
-    if messages:
+    if messages and not is_unit_upgrading_set():
         raise Exception("Couldn't pause: {}".format("; ".join(messages)))
 
 
@@ -1368,20 +1476,10 @@ def resume_unit(assess_status_func, services=None, ports=None,
     @returns None
     @raises Exception(message) on an error for action_fail().
     """
-    services = _extract_services_list_helper(services)
-    messages = []
-    if services:
-        for service in services.keys():
-            started = service_resume(service)
-            if not started:
-                messages.append("{} didn't start cleanly.".format(service))
-    if charm_func:
-        try:
-            message = charm_func()
-            if message:
-                messages.append(message)
-        except Exception as e:
-            message.append(str(e))
+    _, messages = manage_payload_services(
+        'resume',
+        services=services,
+        charm_func=charm_func)
     clear_unit_paused()
     if assess_status_func:
         message = assess_status_func()
@@ -1433,20 +1531,33 @@ def pausable_restart_on_change(restart_map, stopstart=False,
 
     see core.utils.restart_on_change() for more details.
 
+    Note restart_map can be a callable, in which case, restart_map is only
+    evaluated at runtime.  This means that it is lazy and the underlying
+    function won't be called if the decorated function is never called.  Note,
+    retains backwards compatibility for passing a non-callable dictionary.
+
     @param f: the function to decorate
-    @param restart_map: the restart map {conf_file: [services]}
+    @param restart_map: (optionally callable, which then returns the
+        restart_map) the restart map {conf_file: [services]}
     @param stopstart: DEFAULT false; whether to stop, start or just restart
     @returns decorator to use a restart_on_change with pausability
     """
     def wrap(f):
+        # py27 compatible nonlocal variable.  When py3 only, replace with
+        # nonlocal keyword
+        __restart_map_cache = {'cache': None}
+
         @functools.wraps(f)
         def wrapped_f(*args, **kwargs):
             if is_unit_paused_set():
                 return f(*args, **kwargs)
+            if __restart_map_cache['cache'] is None:
+                __restart_map_cache['cache'] = restart_map() \
+                    if callable(restart_map) else restart_map
             # otherwise, normal restart_on_change functionality
             return restart_on_change_helper(
-                (lambda: f(*args, **kwargs)), restart_map, stopstart,
-                restart_functions)
+                (lambda: f(*args, **kwargs)), __restart_map_cache['cache'],
+                stopstart, restart_functions)
         return wrapped_f
     return wrap
 
@@ -1685,3 +1796,62 @@ def install_os_snaps(snaps, refresh=False):
             snap_install(snap,
                          _ensure_flag(snaps[snap]['channel']),
                          _ensure_flag(snaps[snap]['mode']))
+
+
+def set_unit_upgrading():
+    """Set the unit to a upgrading state in the local kv() store.
+    """
+    with unitdata.HookData()() as t:
+        kv = t[0]
+        kv.set('unit-upgrading', True)
+
+
+def clear_unit_upgrading():
+    """Clear the unit from a upgrading state in the local kv() store
+    """
+    with unitdata.HookData()() as t:
+        kv = t[0]
+        kv.set('unit-upgrading', False)
+
+
+def is_unit_upgrading_set():
+    """Return the state of the kv().get('unit-upgrading').
+
+    To help with units that don't have HookData() (testing)
+    if it excepts, return False
+    """
+    try:
+        with unitdata.HookData()() as t:
+            kv = t[0]
+            # transform something truth-y into a Boolean.
+            return not(not(kv.get('unit-upgrading')))
+    except Exception:
+        return False
+
+
+def series_upgrade_prepare(pause_unit_helper=None, configs=None):
+    """ Run common series upgrade prepare tasks.
+
+    :param pause_unit_helper: function: Function to pause unit
+    :param configs: OSConfigRenderer object: Configurations
+    :returns None:
+    """
+    set_unit_upgrading()
+    if pause_unit_helper and configs:
+        if not is_unit_paused_set():
+            pause_unit_helper(configs)
+
+
+def series_upgrade_complete(resume_unit_helper=None, configs=None):
+    """ Run common series upgrade complete tasks.
+
+    :param resume_unit_helper: function: Function to resume unit
+    :param configs: OSConfigRenderer object: Configurations
+    :returns None:
+    """
+    clear_unit_paused()
+    clear_unit_upgrading()
+    if configs:
+        configs.write_all()
+        if resume_unit_helper:
+            resume_unit_helper(configs)

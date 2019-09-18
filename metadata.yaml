@@ -15,6 +15,9 @@ series:
 extra-bindings:
   data:
 provides:
+  aci-opflex:
+    interface: aci-opflex
+    scope: container
   neutron-plugin:
     interface: neutron-plugin
     scope: container

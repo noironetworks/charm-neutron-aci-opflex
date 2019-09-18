@@ -186,19 +186,6 @@ def neutron_plugins():
             'server_packages': ['neutron-server',
                                 'python-neutron-plugin-midonet'],
             'server_services': ['neutron-server']
-        },
-        'aci': {
-            'config': '/etc/neutron/plugins/ml2/ml2_conf_cisco_apic.ini', 
-            'driver': 'neutron.plugins.ml2.plugin.Ml2Plugin',
-            'contexts': [
-                context.SharedDBContext(user=config('neutron-database-user'),
-                                        database=config('neutron-database'),
-                                        relation_prefix='neutron',
-                                        ssl_dir=NEUTRON_CONF_DIR)],
-            'services': [],
-            'packages': [],
-            'server_packages': ['neutron-server'],
-            'server_services': ['neutron-server']
         }
     }
     if CompareOpenStackReleases(release) >= 'icehouse':
@@ -230,6 +217,11 @@ def neutron_plugins():
         plugins['nsx']['config'] = '/etc/neutron/nsx.ini'
         plugins['vsp']['driver'] = (
             'nuage_neutron.plugins.nuage.plugin.NuagePlugin')
+    if CompareOpenStackReleases(release) >= 'newton':
+        plugins['vsp']['config'] = '/etc/neutron/plugins/ml2/ml2_conf.ini'
+        plugins['vsp']['driver'] = 'neutron.plugins.ml2.plugin.Ml2Plugin'
+        plugins['vsp']['server_packages'] = ['neutron-server',
+                                             'neutron-plugin-ml2']
     return plugins
 
 
