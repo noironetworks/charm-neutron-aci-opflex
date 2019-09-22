@@ -9,6 +9,7 @@ tags:
   - openstack
 series:
   - xenial
+  - bionic
   - trusty
   - precise
   - yakkety
