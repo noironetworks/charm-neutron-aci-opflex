@@ -149,6 +149,8 @@ def aci_opflex_install_pkgs():
     if config('aci-repo-key'):
         fetch.add_source(config('aci-repo'), key=config('aci-repo-key'))
     else:
+        with open('/etc/apt/apt.conf.d/90insecure', 'w') as ou:
+           ou.write('Acquire::AllowInsecureRepositories "true";')
         fetch.add_source(config('aci-repo'))
         opt.append('--allow-unauthenticated')
 
