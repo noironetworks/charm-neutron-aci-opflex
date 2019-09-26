@@ -37,6 +37,8 @@ from charmhelpers.contrib.network.ovs import (
 
 from charmhelpers.core.host import (
     restart_on_change,
+    CompareHostReleases,
+    lsb_release,
     service_restart
 )
 
@@ -179,14 +181,28 @@ def create_opflex_interface():
     with open("/sys/class/net/%s/address" % data_port, 'r') as iffile:
         data_port_mac = iffile.read()
 
-    with open('/etc/network/interfaces.d/opflex.cfg', 'w') as iffile:
-        content = """
+    release = CompareHostReleases(lsb_release()['DISTRIB_CODENAME'])
+    if release < 'bionic':
+       with open('/etc/network/interfaces.d/opflex.cfg', 'w') as iffile:
+           content = """
 auto %s.%s
 iface %s.%s inet dhcp
 vlan-raw-device %s
 post-up /sbin/route -nv add -net 224.0.0.0/4 dev %s.%s
-""" % (data_port, infra_vlan, data_port, infra_vlan, data_port, data_port, infra_vlan)
-        iffile.write(content)
+           """ % (data_port, infra_vlan, data_port, infra_vlan, data_port, data_port, infra_vlan)
+           iffile.write(content)
+    else:
+        with open('/etc/netplan/opflex.yaml', 'w') as opfile:
+            content = """
+network:
+    version: 2
+    vlans:
+        %s.%s:
+           id: %s
+           link: %s
+           dhcp4: yes
+            """ % (data_port, infra_vlan, infra_vlan, data_port)
+            opfile.write(content)
 
     with open('/etc/dhcp/dhclient.conf', 'w') as iffile:
         content = """
@@ -197,7 +213,10 @@ interface "%s.%s" {
          """ % (data_port, infra_vlan, socket.gethostname(), data_port_mac.strip())
         iffile.write(content)
 
-    cmd = ['/sbin/ifup', '%s.%s' % (data_port, infra_vlan)]
+    if release < 'bionic':
+       cmd = ['/sbin/ifup', '%s.%s' % (data_port, infra_vlan)]
+    else:
+       cmd = ['netplan', 'apply']
     subprocess.check_call(cmd)
 
     if conf['aci-encap'] == 'vxlan':
