@@ -68,7 +68,7 @@ from charmhelpers.core.host import (
 from charmhelpers import fetch
 
 OPFLEX_CONFIG = "/etc/opflex-agent-ovs/conf.d/opflex-agent-ovs.conf"
-OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent']
+OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent', 'neutron-cisco-apic-host-agent']
 NEUTRON_CONF_DIR = "/etc/neutron"
 NEUTRON_CONF = '%s/neutron.conf' % NEUTRON_CONF_DIR
 OVS_CONF = '%s/plugins/ml2/openvswitch_agent.ini' % NEUTRON_CONF_DIR
@@ -161,6 +161,13 @@ def aci_opflex_install_pkgs():
 
     fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
     fetch.apt_install(ACI_OPFLEX_PACKAGES, options=opt, fatal=True)
+    if config('aci-use-lldp-discovery'):
+       fetch.apt_install('lldpd', fatal=True)
+       if not service_running('lldpd'):
+          service_start('lldpd')
+    else:
+       if service_running('lldpd'):
+          service_stop('lldpd')
 
     cmd = ['/bin/systemctl', 'stop', 'neutron-metadata-agent']
     subprocess.check_call(cmd)
