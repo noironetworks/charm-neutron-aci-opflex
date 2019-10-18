@@ -99,6 +99,7 @@ def amqp_changed():
 
 @hooks.hook('quantum-network-service-relation-joined')
 @hooks.hook('quantum-network-service-relation-changed')
+@restart_on_change(restart_map=restart_map(), stopstart=True)
 def qns_changed():
     if 'quantum-network-service' not in CONFIGS.complete_contexts():
         log('quantum-network-service relation incomplete. Peer not ready?')
