@@ -5,6 +5,7 @@ from copy import deepcopy
 import socket
 import subprocess
 import sys
+import os
 from itertools import chain
 
 ACI_OPFLEX_PACKAGES = [
@@ -210,6 +211,17 @@ network:
            dhcp4: yes
             """ % (data_port, infra_vlan, infra_vlan, data_port)
             opfile.write(content)
+
+        with open('/etc/networkd-dispatcher/routable.d/50-ifup-opflex-hooks', 'w') as rfile:
+            content = """#!/bin/sh
+
+if [ "%s.%s" = "$IFACE" ]
+then
+        route add -net 224.0.0.0 netmask 240.0.0.0 dev $IFACE
+fi
+            """ % (data_port, infra_vlan)
+            rfile.write(content)
+        os.chmod('/etc/networkd-dispatcher/routable.d/50-ifup-opflex-hooks', 484)
 
     with open('/etc/dhcp/dhclient.conf', 'w') as iffile:
         content = """
