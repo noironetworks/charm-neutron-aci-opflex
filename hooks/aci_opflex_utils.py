@@ -8,14 +8,6 @@ import sys
 import os
 from itertools import chain
 
-ACI_OPFLEX_PACKAGES = [
-   'openvswitch-switch', 
-   'agent-ovs', 
-   'neutron-opflex-agent',
-   'neutron-metadata-agent',
-   'conntrack',
-]
-
 from charmhelpers.core.hookenv import (
     Hooks,
     UnregisteredHookError,
@@ -52,6 +44,7 @@ from charmhelpers.contrib.openstack.utils import (
     make_assess_status_func,
     is_unit_paused_set,
     os_release,
+    CompareOpenStackReleases,
 )
 
 from charmhelpers.core.host import (
@@ -67,6 +60,30 @@ from charmhelpers.core.host import (
 )
 
 from charmhelpers import fetch
+
+opt = ['--option=Dpkg::Options::=--force-confdef' ,'--option=Dpkg::Options::=--force-confold']
+fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
+
+myrelease = os_release('neutron-common')
+
+if CompareOpenStackReleases(myrelease) > 'queens':
+    ACI_OPFLEX_PACKAGES = [
+       'openvswitch-switch',
+       'agent-ovs',
+       'python3-neutron',
+       'python3-neutron-opflex-agent',
+       'neutron-metadata-agent',
+       'conntrack',
+    ]
+else:
+    ACI_OPFLEX_PACKAGES = [
+       'openvswitch-switch',
+       'agent-ovs',
+       'neutron-opflex-agent',
+       'neutron-metadata-agent',
+       'conntrack',
+    ]
+
 
 OPFLEX_CONFIG = "/etc/opflex-agent-ovs/conf.d/opflex-agent-ovs.conf"
 OPFLEX_SERVICES = ['opflex-agent', 'neutron-opflex-agent', 'neutron-cisco-apic-host-agent']

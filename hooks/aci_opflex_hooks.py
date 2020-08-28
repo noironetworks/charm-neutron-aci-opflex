@@ -7,7 +7,6 @@ import sys
 import pdb
 
 from charmhelpers import fetch
-fetch.apt_install(['python-apt'])
 
 from aci_opflex_utils import (
     ACI_OPFLEX_PACKAGES,
