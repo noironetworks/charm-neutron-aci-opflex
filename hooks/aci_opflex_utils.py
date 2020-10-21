@@ -261,6 +261,15 @@ interface "%s.%s" {
                'options:remote_ip=flow', 'options:key=flow', 'options:dst_port=8472']
         subprocess.check_call(cmd)
 
+def configure_groups():
+    """Add the neutron user to the opflexep group.
+
+    This is needed so that the neutron-opflex-agent can create EP files,
+    connect to the notify socket, etc.
+    """
+    cmd = ['/usr/sbin/usermod', '-a', '-G', 'opflexep', 'neutron']
+    subprocess.check_call(cmd)
+
 def configure_ovs():
     status_set('maintenance', 'Configuring ovs')
     if not service_running('openvswitch-switch'):
@@ -278,6 +287,7 @@ def configure_opflex():
             return
     configure_ovs()
     create_opflex_interface()
+    configure_groups()
 
 def assess_status(configs):
     """Assess status of current unit
