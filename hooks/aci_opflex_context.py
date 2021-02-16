@@ -3,7 +3,7 @@
 import pdb
 from charmhelpers.core.hookenv import config
 from charmhelpers.contrib.openstack import context, templating
-from charmhelpers.contrib.openstack.utils import get_host_ip
+from charmhelpers.contrib.openstack.utils import get_host_ip, os_release, CompareOpenStackReleases
 from charmhelpers.core.hookenv import (
     config,
     relation_get,
@@ -58,6 +58,11 @@ class RemoteRestartContext(context.OSContextGenerator):
                             ctxt[restart_key].append(v)
                         except KeyError:
                             ctxt[restart_key] = [v]
+        myrelease = os_release('neutron-common')
+        if CompareOpenStackReleases(myrelease) > 'rocky':
+            host_info = context.HostInfoContext()()
+            ctxt['host_fqdn'] = [host_info.get('host_fqdn')]
+
         for restart_key in ctxt.keys():
             ctxt[restart_key] = '-'.join(sorted(ctxt[restart_key]))
         return ctxt
