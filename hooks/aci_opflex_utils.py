@@ -213,7 +213,7 @@ def create_opflex_interface():
 auto %s.%s
 iface %s.%s inet dhcp
 vlan-raw-device %s
-post-up /sbin/route -nv add -net 224.0.0.0/4 dev %s.%s
+post-up ip route add  224.0.0.0/240.0.0.0 dev %s.%s
            """ % (data_port, infra_vlan, data_port, infra_vlan, data_port, data_port, infra_vlan)
            iffile.write(content)
     else:
@@ -234,7 +234,7 @@ network:
 
 if [ "%s.%s" = "$IFACE" ]
 then
-        route add -net 224.0.0.0 netmask 240.0.0.0 dev $IFACE
+        ip route add  224.0.0.0/240.0.0.0 dev $IFACE
 fi
             """ % (data_port, infra_vlan)
             rfile.write(content)
