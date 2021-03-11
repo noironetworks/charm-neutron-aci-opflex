@@ -193,6 +193,12 @@ def aci_opflex_install_pkgs():
     cmd = ['/bin/systemctl', 'disable', 'neutron-metadata-agent']
     subprocess.check_call(cmd)
 
+    cmd = ['/bin/systemctl', 'stop', 'neutron-server']
+    subprocess.check_call(cmd)
+
+    cmd = ['/bin/systemctl', 'disable', 'neutron-server']
+    subprocess.check_call(cmd)
+
     cmd = ['touch', '/etc/neutron/plugin.ini']
     subprocess.check_call(cmd)
 
