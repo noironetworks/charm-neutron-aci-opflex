@@ -62,9 +62,8 @@ from charmhelpers.core.host import (
 from charmhelpers import fetch
 
 opt = ['--option=Dpkg::Options::=--force-confdef' ,'--option=Dpkg::Options::=--force-confold']
-fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
 
-myrelease = os_release('neutron-common')
+myrelease = os_release('nova-common')
 
 if CompareOpenStackReleases(myrelease) > 'queens':
     ACI_OPFLEX_PACKAGES = [
@@ -177,8 +176,8 @@ def aci_opflex_install_pkgs():
     fetch.apt_update(fatal=True)
     fetch.apt_upgrade(fatal=True, options=opt)
 
-    fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
     fetch.apt_install(ACI_OPFLEX_PACKAGES, options=opt, fatal=True)
+    fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
     if config('aci-use-lldp-discovery'):
        fetch.apt_install('lldpd', fatal=True)
        if not service_running('lldpd'):
