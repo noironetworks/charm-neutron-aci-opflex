@@ -198,6 +198,22 @@ CLOUD_ARCHIVE_POCKETS = {
     'victoria/proposed': 'focal-proposed/victoria',
     'focal-victoria/proposed': 'focal-proposed/victoria',
     'focal-proposed/victoria': 'focal-proposed/victoria',
+    #wallaby
+    'wallaby': 'focal-updates/wallaby',
+    'focal-wallaby': 'focal-updates/wallaby',
+    'focal-wallaby/updates': 'focal-updates/wallaby',
+    'focal-wallaby/wallaby': 'focal-updates/wallaby',
+    'wallaby/proposed': 'focal-proposed/wallaby',
+    'focal-wallaby/proposed': 'focal-proposed/wallaby',
+    'focal-proposed/wallaby': 'focal-proposed/wallaby',
+    #xena
+    'xena': 'focal-updates/xena',
+    'focal-xena': 'focal-updates/xena',
+    'focal-xena/updates': 'focal-updates/xena',
+    'focal-xena/xena': 'focal-updates/xena',
+    'xena/proposed': 'focal-proposed/xena',
+    'focal-xena/proposed': 'focal-proposed/xena',
+    'focal-proposed/xena': 'focal-proposed/xena',
 }
 
 
