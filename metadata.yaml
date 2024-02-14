@@ -13,7 +13,8 @@ series:
   - trusty
   - precise
   - yakkety
-  - focal  
+  - focal
+  - jammy
 extra-bindings:
   data:
 provides:
