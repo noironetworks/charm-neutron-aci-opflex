@@ -163,6 +163,20 @@ CONFIGS = register_configs()
 def aci_opflex_install_pkgs():
     opt = ['--option=Dpkg::Options::=--force-confdef' ,'--option=Dpkg::Options::=--force-confold']
 
+    status_set('maintenance', 'Installing apt packages')
+
+    # Add the security repository
+    subprocess.check_call(
+        [
+            "sh", "-c",
+            'echo "deb http://security.ubuntu.com/ubuntu focal-security main" | sudo tee /etc/apt/sources.list.d/focal-security.list'
+        ]
+    )
+
+    # Update and install libssl1.1
+    subprocess.check_call(["sudo", "apt-get", "update"])
+    subprocess.check_call(["sudo", "apt-get", "install", "-y", "libssl1.1"])
+
     conf = config()
 
     if config('aci-repo-key'):
