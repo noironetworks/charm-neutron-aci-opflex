@@ -121,6 +121,7 @@ UNSUPPORTED_CONFIG_CHANGES = [
         'aci-infra-vlan',
         'aci-uplink-interface'
 ]
+PY3_PACKAGES = ['libssl3']
 
 INT_BRIDGE = "br-fabric"
 EXT_BRIDGE = "br-ex"
@@ -163,6 +164,7 @@ CONFIGS = register_configs()
 def aci_opflex_install_pkgs():
     opt = ['--option=Dpkg::Options::=--force-confdef' ,'--option=Dpkg::Options::=--force-confold']
 
+    fetch.apt_install(PY3_PACKAGES, options=opt, fatal=True)
     conf = config()
 
     if config('aci-repo-key'):
