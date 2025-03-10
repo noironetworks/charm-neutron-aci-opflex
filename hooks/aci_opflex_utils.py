@@ -177,7 +177,7 @@ def aci_opflex_install_pkgs():
     fetch.apt_upgrade(fatal=True, options=opt)
 
     fetch.apt_install(ACI_OPFLEX_PACKAGES, options=opt, fatal=True)
-    fetch.apt_install(['neutron-common', 'neutron-server'], options=opt, fatal=True)
+    fetch.apt_install(['neutron-common'], options=opt, fatal=True)
     if config('aci-use-lldp-discovery'):
        fetch.apt_install('lldpd', fatal=True)
        if not service_running('lldpd'):
@@ -190,12 +190,6 @@ def aci_opflex_install_pkgs():
     subprocess.check_call(cmd)
 
     cmd = ['/bin/systemctl', 'disable', 'neutron-metadata-agent']
-    subprocess.check_call(cmd)
-
-    cmd = ['/bin/systemctl', 'stop', 'neutron-server']
-    subprocess.check_call(cmd)
-
-    cmd = ['/bin/systemctl', 'disable', 'neutron-server']
     subprocess.check_call(cmd)
 
     cmd = ['touch', '/etc/neutron/plugin.ini']
