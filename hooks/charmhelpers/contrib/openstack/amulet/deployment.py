@@ -309,6 +309,8 @@ class OpenStackAmuletDeployment(AmuletDeployment):
             ('jammy', 'cloud:jammy-zed'): self.jammy_zed,
             ('jammy', 'cloud:jammy-antelope'): self.jammy_antelope,
             ('lunar', None): self.lunar_antelope,
+            ('jammy', 'cloud:jammy-bobcat'): self.jammy_bobcat,
+            ('mantic', None): self.mantic_bobcat,
         }
         return releases[(self.series, self.openstack)]
 
