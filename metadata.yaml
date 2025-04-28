@@ -15,6 +15,7 @@ series:
   - yakkety
   - focal
   - jammy
+  - noble
 extra-bindings:
   data:
 provides:
