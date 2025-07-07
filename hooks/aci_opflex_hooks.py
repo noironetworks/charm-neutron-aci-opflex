@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from copy import deepcopy
 import subprocess
+import os
 import sys
 import pdb
 
@@ -53,6 +54,13 @@ def aci_opflex_install(relation_id=None):
     log("Installing ACI Opflex packages")
 
     aci_opflex_install_pkgs()
+
+    outofband_path = "/var/lib/opflex-agent-ovs/outofband"
+    try:
+        os.makedirs(outofband_path, exist_ok=True)
+        log(f"Ensured directory exists: {outofband_path}")
+    except Exception as e:
+        log(f"Failed to create {outofband_path}: {e}")
 
 @hooks.hook('update-status')
 def update_status():
